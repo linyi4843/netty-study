@@ -28,15 +28,22 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class DefaultThreadFactory implements ThreadFactory {
 
+    // 实例poolId
     private static final AtomicInteger poolId = new AtomicInteger();
-
+    // 线程id
     private final AtomicInteger nextId = new AtomicInteger();
+    // 线程前缀
     private final String prefix;
+    // 是否守护线程
     private final boolean daemon;
+    // 线程优先级 默认为5
     private final int priority;
     protected final ThreadGroup threadGroup;
 
     public DefaultThreadFactory(Class<?> poolType) {
+        // 实例类型 nioEventLoopGroup
+        // 非守护线程
+        // 优先5
         this(poolType, false, Thread.NORM_PRIORITY);
     }
 
@@ -66,7 +73,7 @@ public class DefaultThreadFactory implements ThreadFactory {
 
     public static String toPoolName(Class<?> poolType) {
         ObjectUtil.checkNotNull(poolType, "poolType");
-
+        // 获取不包含包名的className
         String poolName = StringUtil.simpleClassName(poolType);
         switch (poolName.length()) {
             case 0:
@@ -74,6 +81,7 @@ public class DefaultThreadFactory implements ThreadFactory {
             case 1:
                 return poolName.toLowerCase(Locale.US);
             default:
+                // 将className的第一个字符转成小写并返回
                 if (Character.isUpperCase(poolName.charAt(0)) && Character.isLowerCase(poolName.charAt(1))) {
                     return Character.toLowerCase(poolName.charAt(0)) + poolName.substring(1);
                 } else {
@@ -102,6 +110,7 @@ public class DefaultThreadFactory implements ThreadFactory {
 
     @Override
     public Thread newThread(Runnable r) {
+        // 创建线程
         Thread t = newThread(FastThreadLocalRunnable.wrap(r), prefix + nextId.incrementAndGet());
         try {
             if (t.isDaemon() != daemon) {

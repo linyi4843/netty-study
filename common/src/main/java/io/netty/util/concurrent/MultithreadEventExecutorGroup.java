@@ -44,8 +44,16 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
      * @param nThreads          the number of threads that will be used by this instance.
      * @param threadFactory     the ThreadFactory to use, or {@code null} if the default should be used.
      * @param args              arguments which will passed to each {@link #newChild(Executor, Object...)} call
+     *
+     *         // 线程为0
+     *         // 执行器为空
+     *         // 获取底层jdk Selector实例
+     *         // 默认的选择器
+     *         // 线程池局拒绝策略
      */
+
     protected MultithreadEventExecutorGroup(int nThreads, ThreadFactory threadFactory, Object... args) {
+        // 传入执行器
         this(nThreads, threadFactory == null ? null : new ThreadPerTaskExecutor(threadFactory), args);
     }
 
@@ -57,6 +65,13 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
      * @param args              arguments which will passed to each {@link #newChild(Executor, Object...)} call
      */
     protected MultithreadEventExecutorGroup(int nThreads, Executor executor, Object... args) {
+        // 线程为0
+        // 执行器为空
+        // 添加一个默认的事件执行器
+        // 获取底层jdk Selector实例
+        // 默认的选择器
+        // 线程池局拒绝策略
+
         this(nThreads, executor, DefaultEventExecutorChooserFactory.INSTANCE, args);
     }
 
@@ -70,17 +85,32 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
      */
     protected MultithreadEventExecutorGroup(int nThreads, Executor executor,
                                             EventExecutorChooserFactory chooserFactory, Object... args) {
+        // 线程为0
+        // 执行器为空
+        // 添加一个默认的事件执行器
+        // 获取底层jdk Selector实例
+        // 默认的工作策略选择器
+        // 线程池局拒绝策略
+
         checkPositive(nThreads, "nThreads");
 
         if (executor == null) {
+            // 真正执行任务的线程 executor
+            //  生成一个线程工厂,用来成产实例,FastThreadLocalThread
             executor = new ThreadPerTaskExecutor(newDefaultThreadFactory());
         }
-
+        // 线程数组为cpu核心x2
         children = new EventExecutor[nThreads];
 
         for (int i = 0; i < nThreads; i ++) {
             boolean success = false;
             try {
+                // args
+                // 获取底层jdk Selector实例
+                // 默认的工作策略选择器
+                // 线程池局拒绝策略
+
+                // 会返回nioEventLoop 实例
                 children[i] = newChild(executor, args);
                 success = true;
             } catch (Exception e) {
@@ -107,9 +137,11 @@ public abstract class MultithreadEventExecutorGroup extends AbstractEventExecuto
                 }
             }
         }
-
+        // 生成合适chooser实例 二的平方数?
+        // 后面外部想要获取或者注册到nioEventLoop ,都是通过chooser来分配你nioEventLoop
         chooser = chooserFactory.newChooser(children);
 
+        // 结束监听
         final FutureListener<Object> terminationListener = new FutureListener<Object>() {
             @Override
             public void operationComplete(Future<Object> future) throws Exception {

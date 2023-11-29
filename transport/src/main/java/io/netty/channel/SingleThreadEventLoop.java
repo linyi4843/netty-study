@@ -64,6 +64,11 @@ public abstract class SingleThreadEventLoop extends SingleThreadEventExecutor im
     protected SingleThreadEventLoop(EventLoopGroup parent, Executor executor,
                                     boolean addTaskWakesUp, Queue<Runnable> taskQueue, Queue<Runnable> tailTaskQueue,
                                     RejectedExecutionHandler rejectedExecutionHandler) {
+        // 1 group
+        // 2 ThreadPerTaskExecutor FastThreadLocalThread
+        // 3 母鸡
+        // 4 null 返回一个队列
+        // 5 拒绝策略
         super(parent, executor, addTaskWakesUp, taskQueue, rejectedExecutionHandler);
         tailTasks = ObjectUtil.checkNotNull(tailTaskQueue, "tailTaskQueue");
     }

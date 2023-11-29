@@ -32,14 +32,18 @@ public final class DefaultEventExecutorChooserFactory implements EventExecutorCh
 
     @Override
     public EventExecutorChooser newChooser(EventExecutor[] executors) {
+        // 计算是否是二的次方数
         if (isPowerOfTwo(executors.length)) {
+            // 专用选择器
             return new PowerOfTwoEventExecutorChooser(executors);
         } else {
+            // 通用选择器
             return new GenericEventExecutorChooser(executors);
         }
     }
 
     private static boolean isPowerOfTwo(int val) {
+        // 二的次方数 与 负数& 等于原值  ,非二的次方数 不等于原值
         return (val & -val) == val;
     }
 

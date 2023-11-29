@@ -40,6 +40,8 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
     /**
      * Create a new instance using the default number of threads, the default {@link ThreadFactory} and
      * the {@link SelectorProvider} which is returned by {@link SelectorProvider#provider()}.
+     *
+     * 1
      */
     public NioEventLoopGroup() {
         this(0);
@@ -48,6 +50,8 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
     /**
      * Create a new instance using the specified number of threads, {@link ThreadFactory} and the
      * {@link SelectorProvider} which is returned by {@link SelectorProvider#provider()}.
+     *
+     * 2
      */
     public NioEventLoopGroup(int nThreads) {
         this(nThreads, (Executor) null);
@@ -69,6 +73,9 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
         this(nThreads, threadFactory, SelectorProvider.provider());
     }
 
+    /**
+     * 3
+     */
     public NioEventLoopGroup(int nThreads, Executor executor) {
         this(nThreads, executor, SelectorProvider.provider());
     }
@@ -87,13 +94,24 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
         super(nThreads, threadFactory, selectorProvider, selectStrategyFactory, RejectedExecutionHandlers.reject());
     }
 
+    /**
+     * 5
+     */
     public NioEventLoopGroup(
             int nThreads, Executor executor, final SelectorProvider selectorProvider) {
         this(nThreads, executor, selectorProvider, DefaultSelectStrategyFactory.INSTANCE);
     }
 
+    /**
+     * 6
+     */
     public NioEventLoopGroup(int nThreads, Executor executor, final SelectorProvider selectorProvider,
                              final SelectStrategyFactory selectStrategyFactory) {
+        // 线程为0
+        // 执行器为空
+        // 获取底层jdk Selector实例
+        // 默认的选择器
+        // 线程池局拒绝策略
         super(nThreads, executor, selectorProvider, selectStrategyFactory, RejectedExecutionHandlers.reject());
     }
 
@@ -179,6 +197,12 @@ public class NioEventLoopGroup extends MultithreadEventLoopGroup {
         if (argsLength > 4) {
             tailTaskQueueFactory = (EventLoopTaskQueueFactory) args[4];
         }
+        // 1 nitEventLoopGroup
+        // 2 ThreadPerTaskExecutor FastThreadLocalThread
+        // 3 jdk selector
+        // 4 defaultSelectFactory 默认的选择器
+        // 5 拒绝策略
+        // 6 queueFactory null
         return new NioEventLoop(this, executor, selectorProvider,
                 selectStrategyFactory.newSelectStrategy(),
                 rejectedExecutionHandler, taskQueueFactory, tailTaskQueueFactory);
