@@ -259,6 +259,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
      * Create a new {@link Channel} and bind it.
      */
     public ChannelFuture bind(int inetPort) {
+        // 1
         return bind(new InetSocketAddress(inetPort));
     }
 
@@ -281,10 +282,13 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
      */
     public ChannelFuture bind(SocketAddress localAddress) {
         validate();
+
+        // 2
         return doBind(ObjectUtil.checkNotNull(localAddress, "localAddress"));
     }
 
     private ChannelFuture doBind(final SocketAddress localAddress) {
+        // 初始化
         final ChannelFuture regFuture = initAndRegister();
         final Channel channel = regFuture.channel();
         if (regFuture.cause() != null) {
@@ -323,6 +327,13 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
     final ChannelFuture initAndRegister() {
         Channel channel = null;
         try {
+            // 当前分析的是服务端
+            //ReflectiveChannelFactory 初始化的时候创建的channelFactory
+            // 1 服务channel内部会创建出来 pipeline
+            // 2 pipeline内部有两个处理器分别是head 和 tail
+            // 3 配置channel为非阻塞状态
+            // 4 保存感兴趣的类型为accept
+            // 5 配置unsafe的类型为nioMessageUnsafe
             channel = channelFactory.newChannel();
             init(channel);
         } catch (Throwable t) {

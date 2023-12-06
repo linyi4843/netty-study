@@ -77,10 +77,15 @@ public abstract class AbstractNioChannel extends AbstractChannel {
      * @param readInterestOp    the ops to set to receive data from the {@link SelectableChannel}
      */
     protected AbstractNioChannel(Channel parent, SelectableChannel ch, int readInterestOp) {
+        // 服务端类型
+        // null
+        // jdk的serverSocketChannel
+        // 注册感兴趣的时间 当前服务端channel最终会注册到多路复用器selector
         super(parent);
         this.ch = ch;
         this.readInterestOp = readInterestOp;
         try {
+            // 配置为非阻塞channel
             ch.configureBlocking(false);
         } catch (IOException e) {
             try {

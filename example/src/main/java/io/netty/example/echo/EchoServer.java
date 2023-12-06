@@ -45,11 +45,18 @@ public final class EchoServer {
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         final EchoServerHandler serverHandler = new EchoServerHandler();
         try {
+            // 服务端启动服务类
             ServerBootstrap b = new ServerBootstrap();
+            // boosGroup自己用socketChannel使用
+            // workerGroup 基于当前server产生 客户端使用
             b.group(bossGroup, workerGroup)
+                    // 服务端channel类型 内部创建反射工厂,提供创建对象方法,用于创建 channel实例
              .channel(NioServerSocketChannel.class)
+                    // 保存一些server自定义选项
              .option(ChannelOption.SO_BACKLOG, 100)
+                    // 配置用户自定义的pipeline处理器, 后续创建出来的NioSocketChannel实例,会将用户自定义的handler放在pipeline中
              .handler(new LoggingHandler(LogLevel.INFO))
+                    // 配置服务端上链接进来的客户端,客户端Channel内部的pipeline初始信息
              .childHandler(new ChannelInitializer<SocketChannel>() {
                  @Override
                  public void initChannel(SocketChannel ch) throws Exception {
@@ -63,6 +70,7 @@ public final class EchoServer {
              });
 
             // Start the server.
+            // 绑定端口
             ChannelFuture f = b.bind(PORT).sync();
 
             // Wait until the server socket is closed.
