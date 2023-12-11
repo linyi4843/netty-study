@@ -133,23 +133,47 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
         setChannelOptions(channel, newOptionsArray(), logger);
         setAttributes(channel, newAttributesArray());
 
+        // 拿到服务端的Pipeline
         ChannelPipeline p = channel.pipeline();
 
+        // workgroup
         final EventLoopGroup currentChildGroup = childGroup;
+        // 是他
+        //new ChannelInitializer<SocketChannel>() {
+        //                 @Override
+        //                 public void initChannel(SocketChannel ch) throws Exception {
+        //                     ChannelPipeline p = ch.pipeline();
+        //                     if (sslCtx != null) {
+        //                         p.addLast(sslCtx.newHandler(ch.alloc()));
+        //                     }
+        //                     //p.addLast(new LoggingHandler(LogLevel.INFO));
+        //                     p.addLast(serverHandler);
+        //                 }
+        //             });
         final ChannelHandler currentChildHandler = childHandler;
+        // 客户端socket选项信息
         final Entry<ChannelOption<?>, Object>[] currentChildOptions = newOptionsArray(childOptions);
+        // netty的channel都是实现了 attributeMap 可以在启动类配置一些自定义参数,创建的channel就有这些数据信息
         final Entry<AttributeKey<?>, Object>[] currentChildAttrs = newAttributesArray(childAttrs);
+
         final Collection<ChannelInitializerExtension> extensions = getInitializerExtensions();
 
+        // ChannelInitializer不是一个handler,只是通过适配器实现了handler接口
+        // 它存在的意义,就是为了延迟初始化pipeline,什么时候初始化呢,当pipeline上的channel激活以后,
+        // 真正的添加handler逻辑才执行
+        // 目前知道咱们的nioServerSocketChannel内部的pipeline长这个样子:
+        // head <--> ChannelInitializer不是一个handler <--> tail
         p.addLast(new ChannelInitializer<Channel>() {
             @Override
             public void initChannel(final Channel ch) {
                 final ChannelPipeline pipeline = ch.pipeline();
+                // LoggingHandler
                 ChannelHandler handler = config.handler();
                 if (handler != null) {
                     pipeline.addLast(handler);
                 }
 
+                // todo
                 ch.eventLoop().execute(new Runnable() {
                     @Override
                     public void run() {
