@@ -335,6 +335,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
             // 4 保存感兴趣的类型为accept
             // 5 配置unsafe的类型为nioMessageUnsafe
             channel = channelFactory.newChannel();
+            // 主要工作,给当前服务端channel的pipeline添加一个ChannelInitializer
             init(channel);
         } catch (Throwable t) {
             if (channel != null) {
@@ -347,6 +348,9 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
             return new DefaultChannelPromise(new FailedChannel(), GlobalEventExecutor.INSTANCE).setFailure(t);
         }
 
+        // 注册流程
+        // new ServerBootstrapConfig(this); serverBootstrap
+        // 返回的是之前添加的group bossGroup 她是nioEventLoopGroup.register(channel)
         ChannelFuture regFuture = config().group().register(channel);
         if (regFuture.cause() != null) {
             if (channel.isRegistered()) {

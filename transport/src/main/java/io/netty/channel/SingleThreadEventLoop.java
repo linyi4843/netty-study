@@ -85,6 +85,8 @@ public abstract class SingleThreadEventLoop extends SingleThreadEventExecutor im
 
     @Override
     public ChannelFuture register(Channel channel) {
+        // new DefaultChannelPromise(channel, this)
+        // 类似于Future的东西,支持添加监听者,当关联事件完成之后,会主动回调监听者
         return register(new DefaultChannelPromise(channel, this));
     }
 

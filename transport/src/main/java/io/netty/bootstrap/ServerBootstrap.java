@@ -162,7 +162,8 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
         // 它存在的意义,就是为了延迟初始化pipeline,什么时候初始化呢,当pipeline上的channel激活以后,
         // 真正的添加handler逻辑才执行
         // 目前知道咱们的nioServerSocketChannel内部的pipeline长这个样子:
-        // head <--> ChannelInitializer不是一个handler <--> tail
+        // head <--> ChannelInitializer 不是一个handler <--> tail
+        // 后面合适的时候ChannelInitializer会做解压缩操作,将内部真正的handler添加到pipeline中,并将自己移除pipeline
         p.addLast(new ChannelInitializer<Channel>() {
             @Override
             public void initChannel(final Channel ch) {
