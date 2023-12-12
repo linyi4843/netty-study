@@ -469,7 +469,10 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
         @Override
         public final void register(EventLoop eventLoop, final ChannelPromise promise) {
             ObjectUtil.checkNotNull(eventLoop, "eventLoop");
+            // 防止channel重复注册
             if (isRegistered()) {
+                // 1 设置promise结果是失败
+                // 2 回调监听者,执行失败逻辑
                 promise.setFailure(new IllegalStateException("registered to an event loop already"));
                 return;
             }
@@ -479,12 +482,21 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 return;
             }
 
+            // 获取到channel的作用域,这个channel就是unsafe的外层对象
+            // this 是nioServerSocketChannel对象..
+            // 绑定关系..后续channel上的事件或者任务,都会依赖当前eventLoop线程去处理
             AbstractChannel.this.eventLoop = eventLoop;
 
+            // 判断当前线程是不是当前eventLoop自己的线程
+            // 单个线程去执行,不存在并发性,线程安全
+
+            // channel支持unRegister.. 会重新注册一遍?
             if (eventLoop.inEventLoop()) {
+                // 自己执行
                 register0(promise);
             } else {
                 try {
+                    // 不是自己就提交到工作队列,带着promise
                     eventLoop.execute(new Runnable() {
                         @Override
                         public void run() {
