@@ -289,20 +289,27 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
 
     private ChannelFuture doBind(final SocketAddress localAddress) {
         // 初始化
+        // 返回值注册的promise对象  它关联的异步任务是 register0
+        // register0这个任务目前在channel的eventLoop队列中
         final ChannelFuture regFuture = initAndRegister();
+        // channel是nioServerSocketChannel对象
         final Channel channel = regFuture.channel();
         if (regFuture.cause() != null) {
             return regFuture;
         }
 
+        // Register0 已经执行完就是done状态
         if (regFuture.isDone()) {
             // At this point we know that the registration was complete and successful.
             ChannelPromise promise = channel.newPromise();
             doBind0(regFuture, channel, localAddress, promise);
             return promise;
         } else {
-            // Registration future is almost always fulfilled already, but just in case it's not.
+            // register0未执行完
+            // registration future is almost always fulfilled already, but just in case it's not.
             final PendingRegistrationPromise promise = new PendingRegistrationPromise(channel);
+            //这里想register0相关的promise对象添加一个回调对象, 回调对象去处理 register0成功或者失败的事情
+            // 监听者回调线程是eventLoop线程...并不是当前主线程
             regFuture.addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
@@ -320,6 +327,7 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
                     }
                 }
             });
+            // 主线程返回一个与bind操作相关的promise对象
             return promise;
         }
     }
@@ -351,6 +359,8 @@ public abstract class AbstractBootstrap<B extends AbstractBootstrap<B, C>, C ext
         // 注册流程
         // new ServerBootstrapConfig(this); serverBootstrap
         // 返回的是之前添加的group bossGroup 她是nioEventLoopGroup.register(channel)
+
+        // regFuture就是注册相关的promise对象
         ChannelFuture regFuture = config().group().register(channel);
         if (regFuture.cause() != null) {
             if (channel.isRegistered()) {

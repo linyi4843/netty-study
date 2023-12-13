@@ -71,6 +71,8 @@ public final class EchoServer {
 
             // Start the server.
             // 绑定端口
+            // f是最终返回的与 绑定 相关的操作的promise对象
+            //sync() 会将主线程挂起,知道绑定完成,被唤醒
             ChannelFuture f = b.bind(PORT).sync();
 
             // Wait until the server socket is closed.
