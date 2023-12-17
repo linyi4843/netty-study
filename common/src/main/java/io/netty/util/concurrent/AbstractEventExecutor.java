@@ -62,6 +62,7 @@ public abstract class AbstractEventExecutor extends AbstractExecutorService impl
 
     @Override
     public boolean inEventLoop() {
+        // 是不是当前线程
         return inEventLoop(Thread.currentThread());
     }
 

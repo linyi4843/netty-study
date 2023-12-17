@@ -514,6 +514,8 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             }
         }
 
+        // 这个方法一定是 当前channel关联的eventLoop线程执行
+        // 参数 promise 表示注册结果的,外部可以向他注册监听者...来完成注册后的逻辑
         private void register0(ChannelPromise promise) {
             try {
                 // check if the channel is still open as it could be closed in the mean time when the register
@@ -521,9 +523,13 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 if (!promise.setUncancellable() || !ensureOpen(promise)) {
                     return;
                 }
+                // 看看是不是没有注册过
                 boolean firstRegistration = neverRegistered;
+                // 注册
                 doRegister();
+
                 neverRegistered = false;
+                // 表示当前channel 已经注册到多路复用器了
                 registered = true;
 
                 // Ensure we call handlerAdded(...) before we actually notify the promise. This is needed as the
