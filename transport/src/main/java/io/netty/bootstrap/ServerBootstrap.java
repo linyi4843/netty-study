@@ -174,7 +174,7 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
                     pipeline.addLast(handler);
                 }
 
-                // todo
+                // 异步任务2
                 ch.eventLoop().execute(new Runnable() {
                     @Override
                     public void run() {

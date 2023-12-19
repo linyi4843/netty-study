@@ -133,6 +133,7 @@ public abstract class ChannelInitializer<C extends Channel> extends ChannelInbou
                 exceptionCaught(ctx, cause);
             } finally {
                 if (!ctx.isRemoved()) {
+                    // 拆包完成后把自己删除
                     ctx.pipeline().remove(this);
                 }
             }

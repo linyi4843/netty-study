@@ -607,6 +607,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
 
     private void callHandlerAdded0(final AbstractChannelHandlerContext ctx) {
         try {
+            // cc
             ctx.callHandlerAdded();
         } catch (Throwable t) {
             boolean removed = false;
@@ -1113,6 +1114,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         // the EventLoop.
         PendingHandlerCallback task = pendingHandlerCallbackHead;
         while (task != null) {
+            //CI
             task.execute();
             task = task.next;
         }
@@ -1461,6 +1463,7 @@ public class DefaultChannelPipeline implements ChannelPipeline {
         void execute() {
             EventExecutor executor = ctx.executor();
             if (executor.inEventLoop()) {
+                // cc
                 callHandlerAdded0(ctx);
             } else {
                 try {

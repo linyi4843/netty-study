@@ -534,12 +534,18 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
 
                 // Ensure we call handlerAdded(...) before we actually notify the promise. This is needed as the
                 // user may already fire events through the pipeline in the ChannelFutureListener.
+                // 将传入的channelInitialize 进行拆包,把handler放入到eventLoop中然后把自己删掉
+                /// 会向当前eventLoop线程队列提交任务2
                 pipeline.invokeHandlerAddedIfNeeded();
 
+                // 会回调注册相关的promise上,注册的那些listener,比如'主线程'在regFuture上注册的监听者
+                // 回调到doBind0方法时,会向eventLoop线程提交任务3
                 safeSetSuccess(promise);
+                // 向当前channel的pipeline发起注册事件,关注的handler可以做一些事
                 pipeline.fireChannelRegistered();
                 // Only fire a channelActive if the channel has never been registered. This prevents firing
                 // multiple channel actives if the channel is deregistered and re-registered.
+                // 这里eventLoop正在执行register 所以不成立
                 if (isActive()) {
                     if (firstRegistration) {
                         pipeline.fireChannelActive();
@@ -580,8 +586,10 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                         "address (" + localAddress + ") anyway as requested.");
             }
 
+            // 在这一步还未绑定完成 所以是false
             boolean wasActive = isActive();
             try {
+                // 获取jdk层面的serverSockerChannel,并真正完成绑定工作
                 doBind(localAddress);
             } catch (Throwable t) {
                 safeSetFailure(promise, t);
@@ -589,14 +597,19 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 return;
             }
 
+            // 负负得正,  上面已经完成绑定,所以这里也是true
             if (!wasActive && isActive()) {
+                // 再次向当前的channel eventLoop队列提交任务 任务4
                 invokeLater(new Runnable() {
                     @Override
                     public void run() {
+                        // 再次向当前channel pipline发起read事件
+                        // read事件会修改channel在selector上注册感兴趣的时间,为accept
                         pipeline.fireChannelActive();
                     }
                 });
             }
+            // 咱们的启动线程再改promise上执行wait操作,suoyi这一步绑定完成之后,会将其唤醒
 
             safeSetSuccess(promise);
         }
