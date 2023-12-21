@@ -155,6 +155,7 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
         assert inEventLoop();
 
         ScheduledFutureTask<?> scheduledTask = peekScheduledTask();
+        // 看队头任务是不是符合当前时间点执行
         if (scheduledTask == null || scheduledTask.deadlineNanos() - nanoTime > 0) {
             return null;
         }
@@ -176,7 +177,9 @@ public abstract class AbstractScheduledEventExecutor extends AbstractEventExecut
      * if no task is scheduled.
      */
     protected final long nextScheduledTaskDeadlineNanos() {
+        // 返回队头的周期性任务
         ScheduledFutureTask<?> scheduledTask = peekScheduledTask();
+        // 返回队头任务的截止时间,没有则返回-1
         return scheduledTask != null ? scheduledTask.deadlineNanos() : -1;
     }
 

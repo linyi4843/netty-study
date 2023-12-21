@@ -282,12 +282,15 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         }
         long nanoTime = getCurrentTimeNanos();
         for (;;) {
+            // 对猎头部需要调度的任务拿出来,并把原任务删除
             Runnable scheduledTask = pollScheduledTask(nanoTime);
             if (scheduledTask == null) {
                 return true;
             }
+            // 加到普通的任务里,如果队列满了则失败...
             if (!taskQueue.offer(scheduledTask)) {
                 // No space left in the task queue add it back to the scheduledTaskQueue so we pick it up again.
+                // 就把它返回到原调度队列里,等待普通任务队列里任务被消费完,再加到队列里
                 scheduledTaskQueue.add((ScheduledFutureTask<?>) scheduledTask);
                 return false;
             }
@@ -371,12 +374,16 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
         boolean ranAtLeastOne = false;
 
         do {
+            // 将需要被调动的任务,转移到普通队里里
+            // 需要调度的任务有没有全部转移完毕
+            // 没有转移完毕,就会把队里的任务执行完毕,然后再次执行转移任务
             fetchedAll = fetchFromScheduledTaskQueue();
             if (runAllTasksFrom(taskQueue)) {
                 ranAtLeastOne = true;
             }
         } while (!fetchedAll); // keep on processing until we fetched all scheduled tasks.
 
+        // 如此 需要调度的任务执行完毕和普通任务也执行完毕
         if (ranAtLeastOne) {
             lastExecutionTime = getCurrentTimeNanos();
         }
@@ -463,8 +470,11 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
             return false;
         }
 
+        // 准确任务截止时间点
         final long deadline = timeoutNanos > 0 ? getCurrentTimeNanos() + timeoutNanos : 0;
+        // 已执行的任务个数
         long runTasks = 0;
+        // 最后一个任务执行的时间戳
         long lastExecutionTime;
         for (;;) {
             safeExecute(task);
@@ -473,8 +483,13 @@ public abstract class SingleThreadEventExecutor extends AbstractScheduledEventEx
 
             // Check timeout every 64 tasks because nanoTime() is relatively expensive.
             // XXX: Hard-coded value - will make it configurable if it is really a problem.
+            // 0x3F -> 64 ->  111111
+            // 128 -> 1000000 & 111111  = 0
+            // 192 -> 11000000 & 111111  = 0
+            // 每执行64条件成立一次,则就是执行64个任务
             if ((runTasks & 0x3F) == 0) {
                 lastExecutionTime = getCurrentTimeNanos();
+                // 时间不过了,后续任务不管了,直接跳出
                 if (lastExecutionTime >= deadline) {
                     break;
                 }
