@@ -178,6 +178,11 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
                 ch.eventLoop().execute(new Runnable() {
                     @Override
                     public void run() {
+                        // 参数1 服务端channel
+                        // 参数2 worker线程组
+                        // 参数3 模板代码中配置的childHandler 其实就是一个channelInitializer 用于初始化客户端的pipeline
+                        // 参数4 currentChildOptions
+                        // 参数5 currentChildAttrs
                         pipeline.addLast(new ServerBootstrapAcceptor(
                                 ch, currentChildGroup, currentChildHandler, currentChildOptions, currentChildAttrs,
                                 extensions));
@@ -244,9 +249,13 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
 
         @Override
         @SuppressWarnings("unchecked")
+        // 参数1 包装当前handler的ctx
+        // 参数2 msg nioSocketChannel实例
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
             final Channel child = (Channel) msg;
 
+            // 客户端channel的pipeline
+            // 添加一个CO,模板代码配置
             child.pipeline().addLast(childHandler);
 
             setChannelOptions(child, childOptions, logger);
@@ -263,6 +272,13 @@ public class ServerBootstrap extends AbstractBootstrap<ServerBootstrap, ServerCh
             }
 
             try {
+                // worker线程组
+                // 客户端逻辑注册入口
+                // 注册
+                // 1 从worker组分配一个nioEventLoop给当前 nioSocketChannel使用 | nioEventLoop是多个channel共享的
+                // 2 完成底层socketChannel注册到底层多路复用器
+                // 3 向nioSocketChannel pipeline发起active事件,这个事件有head享用,head最终通过unsafe修改当前channel的selectionKey
+                // 4 感兴趣的时间 包含 head 代表selector 棒当前channel监听 读 事件
                 childGroup.register(child).addListener(new ChannelFutureListener() {
                     @Override
                     public void operationComplete(ChannelFuture future) throws Exception {

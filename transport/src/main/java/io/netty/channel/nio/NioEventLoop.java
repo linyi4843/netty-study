@@ -796,6 +796,8 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     }
 
     private void processSelectedKey(SelectionKey k, AbstractNioChannel ch) {
+        // nioServerSocketChannel -> nioMessageUnsafe
+        // nioSocketChannel -> nioByteUnsafe 处理时间的地方
         final AbstractNioChannel.NioUnsafe unsafe = ch.unsafe();
         if (!k.isValid()) {
             final EventLoop eventLoop;
@@ -843,7 +845,6 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             // to a spin loop
             // 条件1 channel有可读或者accept的事件
             // 条件2 错误场景? 出现后会通过read方法,再次将当前channel的事件列表设置为监听读
-
             if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0) {
                 unsafe.read();
             }

@@ -73,7 +73,8 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
         this.parent = parent;
         // 创建channelId
         id = newId();
-        // 服务端nioServerChannel 她的unsafe 是NioMessageUnsafe
+        // 服务端nioServerSocketChannel 她的unsafe 是NioMessageUnsafe
+        // 服务端nioServerChannel 她的unsafe 是NioByteUnsafe
         unsafe = newUnsafe();
         // 创建出来当前channel内部的pipeline
         // 初始化的pipeline内部有两个默认的处理器,分别是HeadContext和TailContext,并且并且首尾相连
@@ -546,6 +547,8 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 // Only fire a channelActive if the channel has never been registered. This prevents firing
                 // multiple channel actives if the channel is deregistered and re-registered.
                 // 这里eventLoop正在执行register 所以不成立
+
+                // 客户端成立 判断打开和链接,服务端进不来,可看实现
                 if (isActive()) {
                     if (firstRegistration) {
                         pipeline.fireChannelActive();

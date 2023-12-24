@@ -99,6 +99,13 @@ public abstract class SingleThreadEventLoop extends SingleThreadEventExecutor im
         // nioMessageUnsafe.register()
         // 参数1 nioEventLoop单线程线程池..
         // 参数2 promise结果封装..外部可以注册,监听..就行异步操作
+
+        // 客户端
+        // promise.channel() nioSocketChannel
+        // nioSocketChannel.unsafe() 返回的是? nioByteUnsafe
+        // nioByteUnsafe.register()
+        // 参数1 nioEventLoop单线程线程池..
+        // 参数2 promise结果封装..外部可以注册,监听..就行异步操作
         promise.channel().unsafe().register(this, promise);
         return promise;
     }

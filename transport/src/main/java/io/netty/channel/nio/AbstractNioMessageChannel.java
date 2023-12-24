@@ -69,7 +69,9 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
         @Override
         public void read() {
             assert eventLoop().inEventLoop();
+            // NioServerSocketChannelConfig
             final ChannelConfig config = config();
+            // NioServerSocketChannel pipeline
             final ChannelPipeline pipeline = pipeline();
             final RecvByteBufAllocator.Handle allocHandle = unsafe().recvBufAllocHandle();
             allocHandle.reset(config);
@@ -80,27 +82,34 @@ public abstract class AbstractNioMessageChannel extends AbstractNioChannel {
                 try {
                     do {
                         int localRead = doReadMessages(readBuf);
+                        // 正常运行
                         if (localRead == 0) {
                             break;
                         }
+                        // 说明服务端处于关闭状态
                         if (localRead < 0) {
                             closed = true;
                             break;
                         }
 
+                        // 更新已读消息数量
                         allocHandle.incMessagesRead(localRead);
                     } while (continueReading(allocHandle));
                 } catch (Throwable t) {
                     exception = t;
                 }
 
+                // readBuf 存的是客户端channel对象
                 int size = readBuf.size();
                 for (int i = 0; i < size; i ++) {
                     readPending = false;
+                    // 向服务端通道传播每个客户端channel对象
                     pipeline.fireChannelRead(readBuf.get(i));
                 }
+                // 清空
                 readBuf.clear();
                 allocHandle.readComplete();
+                // 重新设置selector上当前server key,让selector继续监听accept
                 pipeline.fireChannelReadComplete();
 
                 if (exception != null) {
