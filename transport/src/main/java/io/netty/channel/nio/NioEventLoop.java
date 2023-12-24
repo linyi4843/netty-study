@@ -843,7 +843,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
             // Also check for readOps of 0 to workaround possible JDK bug which may otherwise lead
             // to a spin loop
-            // 条件1 channel有可读或者accept的事件
+            // 条件1 channel有可读或者accept的事件 socketChannel 监听 read
             // 条件2 错误场景? 出现后会通过read方法,再次将当前channel的事件列表设置为监听读
             if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0) {
                 unsafe.read();
