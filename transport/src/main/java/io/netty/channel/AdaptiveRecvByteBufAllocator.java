@@ -39,18 +39,23 @@ public class AdaptiveRecvByteBufAllocator extends DefaultMaxMessagesRecvByteBufA
     static final int DEFAULT_INITIAL = 2048;
     static final int DEFAULT_MAXIMUM = 65536;
 
+    // 索引增量
     private static final int INDEX_INCREMENT = 4;
+    // 索引减量
     private static final int INDEX_DECREMENT = 1;
 
+    // size table
     private static final int[] SIZE_TABLE;
 
     static {
         List<Integer> sizeTable = new ArrayList<Integer>();
+        // 向size数组中 添加 16,32,48-----496
         for (int i = 16; i < 512; i += 16) {
             sizeTable.add(i);
         }
 
         // Suppress a warning since i becomes negative when an integer overflow happens
+        // 向siz数组中添加: 512,1024,2048 ---一直到int值溢出成为负数
         for (int i = 512; i > 0; i <<= 1) {
             sizeTable.add(i);
         }
@@ -99,10 +104,16 @@ public class AdaptiveRecvByteBufAllocator extends DefaultMaxMessagesRecvByteBufA
         private boolean decreaseNow;
 
         HandleImpl(int minIndex, int maxIndex, int initial) {
+            // 64 在SIZE_TABLE的下标
+            // 65536在SIZE_TABLE的下标
+            // 1024固定值
+
             this.minIndex = minIndex;
             this.maxIndex = maxIndex;
 
+            // 计算出size 1024 在SIZE_TABLE的下标
             index = getSizeTableIndex(initial);
+            // 表示下一次分配出来的byteBuf容量大小   默认第一次是1024
             nextReceiveBufferSize = SIZE_TABLE[index];
         }
 
@@ -112,9 +123,12 @@ public class AdaptiveRecvByteBufAllocator extends DefaultMaxMessagesRecvByteBufA
             // This helps adjust more quickly when large amounts of data is pending and can avoid going back to
             // the selector to check for more data. Going back to the selector can add significant latency for large
             // data transfers.
+            // 说明读取的数据量与评估的数据量一直,说明ch中可能还有数据未读完,需要继续读
             if (bytes == attemptedBytesRead()) {
+                // 要更新nextReceiveBufferSize大小,评估的量被读满了,需要更大的容器
                 record(bytes);
             }
+            // 总量记录
             super.lastBytesRead(bytes);
         }
 
@@ -123,16 +137,26 @@ public class AdaptiveRecvByteBufAllocator extends DefaultMaxMessagesRecvByteBufA
             return nextReceiveBufferSize;
         }
 
+        // actualReadBytes 从ch内读取的数据量
         private void record(int actualReadBytes) {
+            // 举个例子
+            // 假设SIZE_TABLE[index] = 512  SIZE_TABLE[index - 1 ] = 496
+            // 如果本地数据读取量 <= 496 说明ch缓冲区数据不是很多,可能不需要那么大的ByteBuf
+            // 如果第二次读取的数据量 <= 496 说明ch的缓冲区不多,不需要这么大的ByteBuf
             if (actualReadBytes <= SIZE_TABLE[max(0, index - INDEX_DECREMENT)]) {
                 if (decreaseNow) {
+                    // 不能小于初始化的 SIZE_TABLE[minIndex]
                     index = max(index - INDEX_DECREMENT, minIndex);
+                    // 获取相对减小BufferSize值,赋值给 nextReceiveBufferSize
                     nextReceiveBufferSize = SIZE_TABLE[index];
                     decreaseNow = false;
                 } else {
                     decreaseNow = true;
                 }
-            } else if (actualReadBytes >= nextReceiveBufferSize) {
+            }
+            // 说明ch读请求,已经将ByteBuf容器装满了.. 可能有更多数据,所以这里index右移一位
+            // 获取一个更大的nextReceiveBufferSize,下次构建出更大的ByteBuf对象
+            else if (actualReadBytes >= nextReceiveBufferSize) {
                 index = min(index + INDEX_INCREMENT, maxIndex);
                 nextReceiveBufferSize = SIZE_TABLE[index];
                 decreaseNow = false;
@@ -141,6 +165,7 @@ public class AdaptiveRecvByteBufAllocator extends DefaultMaxMessagesRecvByteBufA
 
         @Override
         public void readComplete() {
+            // 整个读请求之后计算一遍容量
             record(totalBytesRead());
         }
     }
@@ -155,6 +180,7 @@ public class AdaptiveRecvByteBufAllocator extends DefaultMaxMessagesRecvByteBufA
      * go down below {@code 64}, and does not go up above {@code 65536}.
      */
     public AdaptiveRecvByteBufAllocator() {
+        // 64 1024 65536
         this(DEFAULT_MINIMUM, DEFAULT_INITIAL, DEFAULT_MAXIMUM);
     }
 
@@ -165,6 +191,7 @@ public class AdaptiveRecvByteBufAllocator extends DefaultMaxMessagesRecvByteBufA
      * @param initial  the initial buffer size when no feed back was received
      * @param maximum  the inclusive upper bound of the expected buffer size
      */
+    // 64 1024 65536
     public AdaptiveRecvByteBufAllocator(int minimum, int initial, int maximum) {
         checkPositive(minimum, "minimum");
         if (initial < minimum) {
@@ -174,20 +201,27 @@ public class AdaptiveRecvByteBufAllocator extends DefaultMaxMessagesRecvByteBufA
             throw new IllegalArgumentException("maximum: " + maximum);
         }
 
+        // 使用二分查找算法 ,minimum size 在数组内的下标(ps: SIZE_TABLE[下标] <= minimum值)
         int minIndex = getSizeTableIndex(minimum);
+
+        // 确保不能小于minimum值,所以右移index
         if (SIZE_TABLE[minIndex] < minimum) {
+            // 确保SIZE_TABLE[minIndex] >= minimum 值
             this.minIndex = minIndex + 1;
         } else {
-            this.minIndex = minIndex;
+            this.minIndex
+                    = minIndex;
         }
-
+        // 使用二分查找算法 ,maximum size 在数组内的下标(ps: SIZE_TABLE[下标] <= maximum值)
         int maxIndex = getSizeTableIndex(maximum);
+        // 确保不能超出minimum值,所以左移index
         if (SIZE_TABLE[maxIndex] > maximum) {
             this.maxIndex = maxIndex - 1;
         } else {
             this.maxIndex = maxIndex;
         }
 
+        // 初始值 1024
         this.initial = initial;
     }
 

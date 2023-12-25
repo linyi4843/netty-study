@@ -31,6 +31,7 @@ public interface RecvByteBufAllocator {
      * Creates a new handle.  The handle provides the actual operations and keeps the internal information which is
      * required for predicting an optimal buffer capacity.
      */
+    // 作用是预测byteBug的大小.正好合适,不能太小也不能太大
     Handle newHandle();
 
     /**
@@ -42,12 +43,15 @@ public interface RecvByteBufAllocator {
          * Creates a new receive buffer whose capacity is probably large enough to read all inbound data and small
          * enough not to waste its space.
          */
+        // 分配byteBuf缓冲器对象的接口,参数很重要! 提供预测分配的对象
+        // 真正分配内存的 alloc
         ByteBuf allocate(ByteBufAllocator alloc);
 
         /**
          * Similar to {@link #allocate(ByteBufAllocator)} except that it does not allocate anything but just tells the
          * capacity.
          */
+        // 获取预测值
         int guess();
 
         /**
@@ -59,12 +63,14 @@ public interface RecvByteBufAllocator {
          * This is only ever a hint and may be ignored by the implementation.
          * @param config The channel configuration which may impact this object's behavior.
          */
+        // 充值
         void reset(ChannelConfig config);
 
         /**
          * Increment the number of messages that have been read for the current read loop.
          * @param numMessages The amount to increment by.
          */
+        // 增加已读消息数量,不是指byteSize 而是读取的此时
         void incMessagesRead(int numMessages);
 
         /**
@@ -75,35 +81,41 @@ public interface RecvByteBufAllocator {
          * {@link #lastBytesRead()}. A negative value will signal a termination condition enforced externally
          * to this class and is not required to be enforced in {@link #continueReading()}.
          */
+        // 最后一次从ch读取数据量大小 -> byteSize
         void lastBytesRead(int bytes);
 
         /**
          * Get the amount of bytes for the previous read operation.
          * @return The amount of bytes for the previous read operation.
          */
+        // 获取最后一次从ch总读取数据量大小
         int lastBytesRead();
 
         /**
          * Set how many bytes the read operation will (or did) attempt to read.
          * @param bytes How many bytes the read operation will (or did) attempt to read.
          */
+        // 设置即将想要读取的数据量,或者已经读取的数据量
         void attemptedBytesRead(int bytes);
 
         /**
          * Get how many bytes the read operation will (or did) attempt to read.
          * @return How many bytes the read operation will (or did) attempt to read.
          */
+        // 设置即将想要读取的数据量,或者已经读取的数据量
         int attemptedBytesRead();
 
         /**
          * Determine if the current read loop should continue.
          * @return {@code true} if the read loop should continue reading. {@code false} if the read loop is complete.
          */
+        // 判断是否继续读循环 -> do-while   nioMessageUnsafe.read  nioByteUnsafe.read
         boolean continueReading();
 
         /**
          * The read has completed.
          */
+        // 本次读循环完毕
         void readComplete();
     }
 
