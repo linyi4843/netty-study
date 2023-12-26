@@ -58,6 +58,9 @@ import static io.netty.channel.ChannelHandlerMask.MASK_USER_EVENT_TRIGGERED;
 import static io.netty.channel.ChannelHandlerMask.MASK_WRITE;
 import static io.netty.channel.ChannelHandlerMask.mask;
 
+/**
+ * 模板代码 理解一个都理解
+ */
 abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, ResourceLeakHint {
 
     private static final InternalLogger logger = InternalLoggerFactory.getInstance(AbstractChannelHandlerContext.class);
@@ -85,7 +88,9 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
      */
     private static final int INIT = 0;
 
+    // 当前ctx归属的pipeline
     private final DefaultChannelPipeline pipeline;
+    // 想pipeline添加的ctx的时候,会自动生成name
     private final String name;
     private final boolean ordered;
     private final int executionMask;
@@ -101,6 +106,12 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
 
     private volatile int handlerState = INIT;
 
+    // p1 pipeline外层容器 ,盛装CTX(handler) 的管道容器
+    // p2 executor 时间执行器 一般情况下这里为null 除非指定了
+    // p3 name
+    // p4 真实的class
+
+    //mask  二进制中对应下表的位,代表的方法, 位的值是1 说明指定方法在handlerType类型中就行了实现 位的值0 则未进行时实现
     AbstractChannelHandlerContext(DefaultChannelPipeline pipeline, EventExecutor executor,
                                   String name, Class<? extends ChannelHandler> handlerClass) {
         this.name = ObjectUtil.checkNotNull(name, "name");
@@ -409,6 +420,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
 
     @Override
     public ChannelHandlerContext fireChannelRead(final Object msg) {
+        // 会找到当前ctx后面的ctx中实现了CHANNEL_REGISTERED方法的ctx 其实是ctx中handler的实现
         invokeChannelRead(findContextInbound(MASK_CHANNEL_READ), msg);
         return this;
     }
@@ -1054,6 +1066,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
         EventExecutor currentExecutor = executor();
         do {
             ctx = ctx.next;
+            // 看后面的handler有没有实现ctx true为没有,一直往后查询
         } while (skipContext(ctx, currentExecutor, mask, MASK_ONLY_INBOUND));
         return ctx;
     }
