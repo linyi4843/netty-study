@@ -71,17 +71,50 @@ public final class ChannelOutboundBuffer {
         }
     };
 
+    /**
+     * 1 unflushedEntry != null && flushedEntry == null 此时出站缓冲区 处于数据入站阶段
+     * 2 unflushedEntry == null && flushedEntry != null 此时出站缓冲区 处于数据出站阶段
+     * 调用了addFlush方法之后unflushedEntry会将值传递给 flushedEntry 并将自己置空
+     * 3 unflushedEntry != null && flushedEntry != null 情况较少
+     *
+     * 假设业务层面 不听的使用 ctx.write(msg) msg最终会调用unsafe.read(msg) -> channelOutboundBuffer.addMessage(msg0
+     * e1 -> e3 -> e4 -> e5 -> e6 -> .... -> eN
+     *
+     * flushedEntry -> null
+     * unflushedEntry -> e1
+     * tailEntry -> null
+     *
+     * 业务handler接下来,代用ctx.flush() 最终会触发 unsafe.flush()
+     *
+     *  function unsafe.flush(){
+     *     1 channelOutboundBuffer.addFlush() 这个方法将flushedEntry指向unflushedEntry的元素 flushedEntry -> e1
+     *     2 channelOutboundBuffer.nioBuffers(...) 这个方法会返回byteBuffer[]数组逻辑使用 构造Entry为数组
+     *     3 遍历byteBuffer[] 调用jdk channel.write(buffer) 该方法会返回真正吸入socket写缓冲区的字节数,res
+     *     4 根据res移除出栈缓冲区内对应的entry
+     * }
+     *
+     *  socket写缓冲区会被写满,假设写到byteBuffer[3]的时候,socket缓冲区被写满了,此时nioEventLoop继续写是没用的
+     *  此时会设置多路复用去当前ch关注OP_WRITE书剑,当底层socket缓冲区有空闲时间时,多路复用器会唤醒nioEventLoop线程进行处理
+     *
+     *  这种情况 flushedEntry -> e4
+     *
+     *  业务handler再次使用ctx.write(msg) 那么 unflushedEntry就指向当前msg对应的entry
+     */
+
+    // 缓冲区归属channel
     private final Channel channel;
 
     // Entry(flushedEntry) --> ... Entry(unflushedEntry) --> ... Entry(tailEntry)
     //
     // The Entry that is the first in the linked-list structure that was flushed
+    //
     private Entry flushedEntry;
     // The Entry which is the first unflushed in the linked-list structure
     private Entry unflushedEntry;
     // The Entry which represents the tail of the buffer
     private Entry tailEntry;
     // The number of flushed entries that are not written yet
+    // 剩余多少entry代刷新到channel.addFlush方法会计算这个值,计算方式: 从 flushedEntry 一直遍历到tail 计算出有多少元素
     private int flushed;
 
     private int nioBufferCount;
@@ -92,12 +125,15 @@ public final class ChannelOutboundBuffer {
     private static final AtomicLongFieldUpdater<ChannelOutboundBuffer> TOTAL_PENDING_SIZE_UPDATER =
             AtomicLongFieldUpdater.newUpdater(ChannelOutboundBuffer.class, "totalPendingSize");
 
+    // 出站缓冲去 ,总共有多少字节量,(包含entry自身字段占用的空间 entry->msg + entry.filed)
     @SuppressWarnings("UnusedDeclaration")
     private volatile long totalPendingSize;
 
     private static final AtomicIntegerFieldUpdater<ChannelOutboundBuffer> UNWRITABLE_UPDATER =
             AtomicIntegerFieldUpdater.newUpdater(ChannelOutboundBuffer.class, "unwritable");
 
+    // 表示出战缓冲去是否可写, 0 表示可写 1表示不可泄
+    // 如果业务层面不检查unwritable不受限制
     @SuppressWarnings("UnusedDeclaration")
     private volatile int unwritable;
 

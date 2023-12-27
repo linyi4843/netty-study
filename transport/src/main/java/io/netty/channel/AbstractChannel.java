@@ -434,6 +434,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
      */
     protected abstract class AbstractUnsafe implements Unsafe {
 
+        // 每个channel都有一个属于他自己的unsafe 每个unsafe都有一个属于自己的outboundBuffer
         private volatile ChannelOutboundBuffer outboundBuffer = new ChannelOutboundBuffer(AbstractChannel.this);
         private RecvByteBufAllocator.Handle recvHandle;
         private boolean inFlush0;
@@ -882,6 +883,8 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             }
         }
 
+        // 参数2 msg 一般是byteBuf对象,有其他情况比如 fileRegion
+        // 参数3 业务如果关注本次写操作是否成功或者失败,可以手动提交一个跟msg相关的promise,并注册一些监听者,用于处理结果
         @Override
         public final void write(Object msg, ChannelPromise promise) {
             assertEventLoop();
@@ -902,9 +905,13 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 return;
             }
 
+            // msg的数据大小
             int size;
             try {
+                //  msg一般都是byteBuf类型 byteBuf对象根据内存归属分为heap和direct
+                // 如果byteBuf类型是heap类型,就会将他转换为direct类型
                 msg = filterOutboundMessage(msg);
+                // 获取当前消息 有效数据量大小
                 size = pipeline.estimatorHandle().size(msg);
                 if (size < 0) {
                     size = 0;
@@ -918,6 +925,10 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 return;
             }
 
+            // 将byteBuf数据加到出战蝗虫去
+            // 参数1 direct类型的byteBuf对象
+            // 参数2 数据量大小
+            // 参数3 业务如果关注本次写操作是否成功或者失败,可以手动提交一个跟msg相关的promise,并注册一些监听者,用于处理结果
             outboundBuffer.addMessage(msg, size, promise);
         }
 
