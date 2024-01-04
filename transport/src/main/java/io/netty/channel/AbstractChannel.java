@@ -925,7 +925,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 return;
             }
 
-            // 将byteBuf数据加到出战蝗虫去
+            // 将byteBuf数据加到出栈缓冲区去
             // 参数1 direct类型的byteBuf对象
             // 参数2 数据量大小
             // 参数3 业务如果关注本次写操作是否成功或者失败,可以手动提交一个跟msg相关的promise,并注册一些监听者,用于处理结果
@@ -941,7 +941,11 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 return;
             }
 
+            // 预准备刷新工作
+            // 将flushedEntry 指向第一个需要刷新的entry节点
+            // 计算出 flushedEntry -> tailEntry总共有多少entry需要被刷新
             outboundBuffer.addFlush();
+            // 刷新工作
             flush0();
         }
 
@@ -957,6 +961,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 return;
             }
 
+            // 当前正在刷新任务
             inFlush0 = true;
 
             // Mark all pending write requests as failure if the channel is inactive.
@@ -978,6 +983,8 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
             }
 
             try {
+                // 正常
+                // 当前ch的出栈缓冲区
                 doWrite(outboundBuffer);
             } catch (Throwable t) {
                 handleWriteError(t);

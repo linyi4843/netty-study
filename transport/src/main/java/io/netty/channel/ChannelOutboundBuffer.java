@@ -107,11 +107,13 @@ public final class ChannelOutboundBuffer {
     // Entry(flushedEntry) --> ... Entry(unflushedEntry) --> ... Entry(tailEntry)
     //
     // The Entry that is the first in the linked-list structure that was flushed
-    //
+    // 代刷新的第一个节点
     private Entry flushedEntry;
     // The Entry which is the first unflushed in the linked-list structure
+    // 未刷新的第一个节点
     private Entry unflushedEntry;
     // The Entry which represents the tail of the buffer
+    // 尾节点
     private Entry tailEntry;
     // The number of flushed entries that are not written yet
     // 剩余多少entry代刷新到channel.addFlush方法会计算这个值,计算方式: 从 flushedEntry 一直遍历到tail 计算出有多少元素
@@ -122,6 +124,7 @@ public final class ChannelOutboundBuffer {
 
     private boolean inFail;
 
+    // cas方式更新totalPendingSize
     private static final AtomicLongFieldUpdater<ChannelOutboundBuffer> TOTAL_PENDING_SIZE_UPDATER =
             AtomicLongFieldUpdater.newUpdater(ChannelOutboundBuffer.class, "totalPendingSize");
 
@@ -147,8 +150,14 @@ public final class ChannelOutboundBuffer {
      * Add given message to this {@link ChannelOutboundBuffer}. The given {@link ChannelPromise} will be notified once
      * the message was written.
      */
+    // 将byteBuf数据加到出栈缓冲区去
+    // 参数1 direct类型的byteBuf对象
+    // 参数2 数据量大小
+    // 参数3 业务如果关注本次写操作是否成功或者失败,可以手动提交一个跟msg相关的promise,并注册一些监听者,用于处理结果
     public void addMessage(Object msg, int size, ChannelPromise promise) {
+        // 包含数据的entry的对象
         Entry entry = Entry.newInstance(msg, size, total(msg), promise);
+        // 加到链表里
         if (tailEntry == null) {
             flushedEntry = null;
         } else {
@@ -162,6 +171,9 @@ public final class ChannelOutboundBuffer {
 
         // increment pending bytes after adding message to the unflushed arrays.
         // See https://github.com/netty/netty/issues/1619
+        // 累加出栈缓冲区大小
+        // 参数1 pendingSize
+        // 参数2 false
         incrementPendingOutboundBytes(entry.pendingSize, false);
     }
 
@@ -174,6 +186,7 @@ public final class ChannelOutboundBuffer {
         // where added in the meantime.
         //
         // See https://github.com/netty/netty/issues/2577
+        // 待刷新第一个节点
         Entry entry = unflushedEntry;
         if (entry != null) {
             if (flushedEntry == null) {
@@ -181,6 +194,7 @@ public final class ChannelOutboundBuffer {
                 flushedEntry = entry;
             }
             do {
+                // 遍历++算出数量
                 flushed ++;
                 if (!entry.promise.setUncancellable()) {
                     // Was cancelled so make sure we free up memory and notify about the freed bytes
@@ -191,6 +205,7 @@ public final class ChannelOutboundBuffer {
             } while (entry != null);
 
             // All flushed so reset unflushedEntry
+            // 全部刷新，因此重置 unflushedEntry
             unflushedEntry = null;
         }
     }
@@ -203,12 +218,16 @@ public final class ChannelOutboundBuffer {
         incrementPendingOutboundBytes(size, true);
     }
 
+    // 参数1 pendingSize
+    // 参数2 false
     private void incrementPendingOutboundBytes(long size, boolean invokeLater) {
         if (size == 0) {
             return;
         }
 
+        // cas 更新字段,把size累加进去
         long newWriteBufferSize = TOTAL_PENDING_SIZE_UPDATER.addAndGet(this, size);
+        // 如果累加完之后的值,大于出栈缓冲区的高水位,则设置unWriteable字段表示不可写,并且向channel pipeline广播发起unWrite更改事件
         if (newWriteBufferSize > channel.config().getWriteBufferHighWaterMark()) {
             setUnwritable(invokeLater);
         }
@@ -846,16 +865,33 @@ public final class ChannelOutboundBuffer {
             }
         });
 
+        // 归还entry到objectPool使用的句柄
         private final EnhancedHandle<Entry> handle;
+        // 链表 下一个
         Entry next;
+        // 存入的数据,一般书byteBuf
         Object msg;
+        // 当unsafe调用 出战缓冲去 nioBuffers方法时,被涉及到的entry都会将他的msg转换成byteBuffer,这里缓存结果使用
         ByteBuffer[] bufs;
         ByteBuffer buf;
+        // 业务层面关注msg写结果是提交的promise
         ChannelPromise promise;
+        // 进度
         long progress;
+        // byteBuf有效数据量大小 + 96  占的字节数    +86
         long total;
+        // Assuming a 64-bit JVM:
+        //  - 16 bytes object header
+        //  - 6 reference fields
+        //  - 2 long fields
+        //  - 2 int fields
+        //  - 1 boolean field
+        //  - padding
         int pendingSize;
+
+        // 当前msg byteBuf底层由多少byteBuf组成 一般是1  除非是CompositeByteBuf 底层由多个 ByteBuf组成
         int count = -1;
+        // 当前entry是否取消刷新到socket
         boolean cancelled;
 
         private Entry(Handle<Entry> handle) {
@@ -863,8 +899,11 @@ public final class ChannelOutboundBuffer {
         }
 
         static Entry newInstance(Object msg, int size, long total, ChannelPromise promise) {
+            // 从对象池里获取entry 有空闲的就返回空闲的,没空闲的就new
             Entry entry = RECYCLER.get();
+            // 赋值操作
             entry.msg = msg;
+            // 数据量大小+本身大小
             entry.pendingSize = size + CHANNEL_OUTBOUND_BUFFER_ENTRY_OVERHEAD;
             entry.total = total;
             entry.promise = promise;
