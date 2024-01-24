@@ -466,12 +466,23 @@ public final class ChannelOutboundBuffer {
     public ByteBuffer[] nioBuffers(int maxCount, long maxBytes) {
         assert maxCount > 0;
         assert maxBytes > 0;
+        // 本次 nioBuffers 方法调用 一共转换了多少容量的buffer
         long nioBufferSize = 0;
+        // 本次 nioBuffers 方法调用 一共将 byteBUf 转换成多少 byteBuffer 对象
         int nioBufferCount = 0;
+
+        // 当前线程绑定关系的一个map
         final InternalThreadLocalMap threadLocalMap = InternalThreadLocalMap.get();
+
+        // 会给每个线程分配一个长度为1024的 byteBuffer 数组 ,避免每次调用nioBuffers 方法是都创建byteBuffer数组
+        // 提升性能
         ByteBuffer[] nioBuffers = NIO_BUFFERS.get(threadLocalMap);
+
+        // 循环开始节点
         Entry entry = flushedEntry;
+        // 当前节点不是null && 不是unflushedEntry 指向节点   1 循环到末尾节点 或者 循环到 unflushedEntry 节点
         while (isFlushedEntry(entry) && entry.msg instanceof ByteBuf) {
+            // entry 是非取消节点 需要处理
             if (!entry.cancelled) {
                 ByteBuf buf = (ByteBuf) entry.msg;
                 final int readerIndex = buf.readerIndex();

@@ -392,15 +392,22 @@ public class NioSocketChannel extends AbstractNioByteChannel implements io.netty
         // 自旋次数,表示do while循环最多16次
         int writeSpinCount = config().getWriteSpinCount();
         do {
+            // 条件成立 说明出栈缓冲区内待刷新的entry已经清理完毕
             if (in.isEmpty()) {
                 // All written so clear OP_WRITE
+                // 退出之前 会将当前ch在select上注册的OP_WRITE清理掉,不然会有bug
                 clearOpWrite();
                 // Directly return here so incompleteWrite(...) is not called.
                 return;
             }
 
+            //说明channel 出战缓冲区的entry还有数据
             // Ensure the pending writes are made of ByteBufs only.
+            // 限定每次从出栈缓冲区转换多少byteBuf字节数据的一个变量,该变量会随着ch的状态 不断变化
             int maxBytesPerGatheringWrite = ((NioSocketChannelConfig) config).getMaxBytesPerGatheringWrite();
+            // 将出栈缓冲区内的entry.msg转换为jdk channel以来的标准对象 byteBuffer 这里返回的是byteBuffer 数组
+            // 参数1 最多转换1024个byteBuffer数组
+            // 参数2 nioBuffers 方法最多转换 maxBytes个字节的 byteBuf对象
             ByteBuffer[] nioBuffers = in.nioBuffers(1024, maxBytesPerGatheringWrite);
             int nioBufferCnt = in.nioBufferCount();
 
