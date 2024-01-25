@@ -482,6 +482,7 @@ public final class ChannelOutboundBuffer {
         Entry entry = flushedEntry;
         // 当前节点不是null && 不是unflushedEntry 指向节点   1 循环到末尾节点 或者 循环到 unflushedEntry 节点
         while (isFlushedEntry(entry) && entry.msg instanceof ByteBuf) {
+
             // entry 是非取消节点 需要处理
             if (!entry.cancelled) {
                 ByteBuf buf = (ByteBuf) entry.msg;
